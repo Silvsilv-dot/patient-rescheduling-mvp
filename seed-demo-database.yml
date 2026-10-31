@@ -1,0 +1,58 @@
+# Manual "button" that loads synthetic demo data into your Neon DEMO database.
+# WARNING: this WIPES every table in the database the secret points to.
+# How to use: Actions tab -> "Seed demo database" -> Run workflow -> type RESET.
+name: Seed demo database
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RESET to wipe the demo database and load fresh synthetic data"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Load synthetic demo data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Use the DIRECT (non-pooled) Neon connection string for this secret.
+      NEON_DATABASE_URL: ${{ secrets.NEON_DIRECT_DATABASE_URL }}
+      CONFIRM_TEXT: ${{ inputs.confirm }}
+      BRANCH_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Safety checks
+        run: |
+          if [ "$BRANCH_NAME" != "main" ]; then
+            echo "Stopped: run this from the main branch only (you chose '$BRANCH_NAME')."
+            exit 1
+          fi
+          if [ "$CONFIRM_TEXT" != "RESET" ]; then
+            echo "Stopped: you must type RESET exactly (capital letters) to confirm."
+            exit 1
+          fi
+          if [ -z "$NEON_DATABASE_URL" ]; then
+            echo "Stopped: the secret NEON_DIRECT_DATABASE_URL has not been added yet."
+            exit 1
+          fi
+
+      - name: Get the code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Load synthetic data
+        run: python -m db.seed_synthetic --reset --credentials 10
