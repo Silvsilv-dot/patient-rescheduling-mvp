@@ -47,6 +47,9 @@ def _apply_headers(request: Request, response: Response) -> None:
         response.headers[name] = value
     if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = NO_STORE_CACHE_CONTROL
+    elif request.url.path.startswith("/patient"):
+        # The page files are checked for changes on every visit, so an update shows up at once.
+        response.headers["Cache-Control"] = "no-cache"
 
 
 def create_app(static_dir: Optional[Path] = DEFAULT_STATIC_DIR) -> FastAPI:

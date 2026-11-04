@@ -135,6 +135,7 @@ def test_patient_page_is_served_with_security_headers(no_db_env, tmp_path: Path)
     page = app.get("/patient/")
     assert page.status_code == 200 and "hello" in page.text
     assert br.missing_security_headers(page.headers) == []
+    assert page.headers["cache-control"] == "no-cache"  # revalidated on every visit, never stale
     assert app.get("/", follow_redirects=False).headers["location"] == "/patient/"
 
 
