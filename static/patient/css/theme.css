@@ -1,0 +1,102 @@
+/* Color tokens for the light and dark themes (BR-23).
+ *
+ * The same dark values appear twice on purpose:
+ *   1. :root[data-theme="dark"]  - used when theme.js has chosen dark (the normal case).
+ *   2. the prefers-color-scheme block - a fallback if JavaScript is switched off.
+ * A test checks that both copies match and that every text and component pair
+ * meets WCAG AA contrast (4.5:1 for text, 3:1 for borders, focus rings and controls).
+ */
+:root {
+  color-scheme: light;
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --text: #17202a;
+  --muted: #44505c;
+  --border: #66727f;
+  --primary: #0a58ad;
+  --on-primary: #ffffff;
+  --primary-hover: #084889;
+  --link: #0a58ad;
+  --focus: #0a58ad;
+  --danger: #b42318;
+  --on-danger: #ffffff;
+  --danger-hover: #8f1c12;
+  --banner-bg: #ffe9a8;
+  --banner-text: #3b2c00;
+  --urgent-bg: #fdecea;
+  --urgent-text: #5c120d;
+  --urgent-border: #b42318;
+  --ok-bg: #dff3e6;
+  --ok-text: #0f4d27;
+  --info-bg: #e1ecfb;
+  --info-text: #123a6b;
+  --bad-bg: #fbe3e0;
+  --bad-text: #7a1710;
+  --selected-bg: #e1ecfb;
+  --selected-text: #123a6b;
+  --selected-border: #0a58ad;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1419;
+  --surface: #1a2129;
+  --text: #e9eef3;
+  --muted: #aeb9c4;
+  --border: #7d8a97;
+  --primary: #7db8ff;
+  --on-primary: #05213d;
+  --primary-hover: #9cc9ff;
+  --link: #8cc2ff;
+  --focus: #8cc2ff;
+  --danger: #ff8f86;
+  --on-danger: #3a0905;
+  --danger-hover: #ffb0a9;
+  --banner-bg: #4a3a00;
+  --banner-text: #ffe9a8;
+  --urgent-bg: #3a1815;
+  --urgent-text: #ffd7d3;
+  --urgent-border: #ff8f86;
+  --ok-bg: #17382a;
+  --ok-text: #b6efcb;
+  --info-bg: #172f4d;
+  --info-text: #cfe3ff;
+  --bad-bg: #47201c;
+  --bad-text: #ffd0cb;
+  --selected-bg: #172f4d;
+  --selected-text: #cfe3ff;
+  --selected-border: #8cc2ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1419;
+    --surface: #1a2129;
+    --text: #e9eef3;
+    --muted: #aeb9c4;
+    --border: #7d8a97;
+    --primary: #7db8ff;
+    --on-primary: #05213d;
+    --primary-hover: #9cc9ff;
+    --link: #8cc2ff;
+    --focus: #8cc2ff;
+    --danger: #ff8f86;
+    --on-danger: #3a0905;
+    --danger-hover: #ffb0a9;
+    --banner-bg: #4a3a00;
+    --banner-text: #ffe9a8;
+    --urgent-bg: #3a1815;
+    --urgent-text: #ffd7d3;
+    --urgent-border: #ff8f86;
+    --ok-bg: #17382a;
+    --ok-text: #b6efcb;
+    --info-bg: #172f4d;
+    --info-text: #cfe3ff;
+    --bad-bg: #47201c;
+    --bad-text: #ffd0cb;
+    --selected-bg: #172f4d;
+    --selected-text: #cfe3ff;
+    --selected-border: #8cc2ff;
+  }
+}

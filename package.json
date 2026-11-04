@@ -1,0 +1,12 @@
+{
+  "name": "patient-rescheduling-mvp-ui-tests",
+  "private": true,
+  "description": "Browser tests for the patient web page (real headless Chrome). Test tooling only: nothing here is shipped with the app.",
+  "type": "module",
+  "engines": { "node": ">=22.17" },
+  "devDependencies": {
+    "@sparticuz/chromium": "^153.0.0",
+    "axe-core": "^4.10.0",
+    "puppeteer-core": "^25.16.0"
+  }
+}

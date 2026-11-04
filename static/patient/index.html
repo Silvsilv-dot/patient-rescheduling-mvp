@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Appointment Rescheduling - DEMO</title>
+  <link rel="icon" href="data:,">
+  <!-- theme.js must run first and must not be deferred: it sets the theme before anything is painted. -->
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body data-refresh-ms="10000">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="demo-banner" role="region" aria-label="Demo notice">
+    <p>DEMO - Synthetic Data. Educational prototype, not a clinical system.</p>
+  </div>
+
+  <header class="site-header">
+    <h1>Appointment Rescheduling</h1>
+    <button id="theme-toggle" class="btn toggle-button" type="button" aria-pressed="false">
+      Dark theme: <span id="theme-state">Off</span>
+    </button>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <noscript>
+      <p class="message message-error">This page needs JavaScript to work. Please turn it on in your browser, or call the office.</p>
+    </noscript>
+
+    <p class="notice-urgent" role="note">If you need urgent medical help, call your doctor's office or emergency services. This demo does not give medical advice.</p>
+
+    <div id="status-live" class="sr-only" role="status" aria-live="polite"></div>
+
+    <!-- 1. Privacy notice (consent C1) -->
+    <section id="screen-notice" class="card" aria-labelledby="h-notice">
+      <h2 id="h-notice" tabindex="-1">Privacy notice</h2>
+      <p id="notice-text">Loading the privacy notice...</p>
+      <p class="muted small">Notice version <span id="notice-version">-</span></p>
+      <p id="notice-error" class="message message-error" role="alert" hidden></p>
+      <div class="actions">
+        <button id="notice-accept" class="btn btn-primary" type="button" disabled>Accept and continue</button>
+        <button id="notice-decline" class="btn" type="button">Decline</button>
+      </div>
+    </section>
+
+    <!-- 1b. Declined -->
+    <section id="screen-declined" class="card" aria-labelledby="h-declined" hidden>
+      <h2 id="h-declined" tabindex="-1">You chose not to continue</h2>
+      <p>No appointment information was requested or shown. To change or cancel your appointment, please contact the office.</p>
+      <div class="actions">
+        <button id="declined-back" class="btn" type="button">Review the notice again</button>
+      </div>
+    </section>
+
+    <!-- 2. Sign in -->
+    <section id="screen-signin" class="card" aria-labelledby="h-signin" hidden>
+      <h2 id="h-signin" tabindex="-1">Find your appointment</h2>
+      <p>Enter the appointment ID and access code you were given. This is a demo, so use the made-up details from your demo sheet.</p>
+      <p id="signin-error" class="message message-error" role="alert" hidden></p>
+      <form id="signin-form" novalidate>
+        <div class="field">
+          <label for="appt-id">Appointment ID</label>
+          <input id="appt-id" name="appt_id" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="64">
+          <span class="hint">Looks like APT-20260001</span>
+        </div>
+        <div class="field">
+          <label for="access-code">Access code</label>
+          <input id="access-code" name="access_code" type="password" autocomplete="off" inputmode="numeric" maxlength="64">
+        </div>
+        <label class="check" for="show-code">
+          <input id="show-code" type="checkbox">
+          <span>Show the access code</span>
+        </label>
+        <div class="actions">
+          <button id="signin-submit" class="btn btn-primary" type="submit">Continue</button>
+          <button id="signin-back" class="btn" type="button">Back</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 3. The appointment -->
+    <section id="screen-appointment" aria-labelledby="h-appointment" hidden>
+      <div id="result-message" class="message" role="status" hidden></div>
+      <p id="action-error" class="message message-error" role="alert" hidden></p>
+
+      <div class="card">
+        <h2 id="h-appointment" tabindex="-1">Your appointment</h2>
+        <dl class="details">
+          <dt>Appointment ID</dt>
+          <dd id="appt-ident"></dd>
+          <dt>Date and time</dt>
+          <dd id="appt-when"></dd>
+          <dt>Location</dt>
+          <dd id="appt-location"></dd>
+          <dt>Type of visit</dt>
+          <dd id="appt-label"></dd>
+          <dt>Status</dt>
+          <dd id="appt-status"></dd>
+        </dl>
+
+        <div class="actions">
+          <button id="action-confirm" class="btn btn-primary" type="button">Confirm</button>
+          <button id="action-reschedule" class="btn" type="button">Reschedule</button>
+          <button id="action-cancel" class="btn" type="button">Cancel appointment</button>
+        </div>
+        <ul id="action-notes" class="action-notes" hidden></ul>
+
+        <div id="cancel-panel" class="panel" role="group" aria-labelledby="cancel-title" hidden>
+          <h3 id="cancel-title">Cancel this appointment?</h3>
+          <p>This frees the time for someone else. It cannot be undone online.</p>
+          <div class="actions">
+            <button id="cancel-keep" class="btn" type="button">Keep appointment</button>
+            <button id="cancel-yes" class="btn btn-danger" type="button">Yes, cancel appointment</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 id="h-reminders">Reminders</h3>
+        <label class="check" for="reminders-toggle">
+          <input id="reminders-toggle" type="checkbox">
+          <span>Show me simulated reminders for this appointment</span>
+        </label>
+        <p id="reminders-note" class="muted small"></p>
+        <ul id="reminders-list" class="reminder-list" hidden></ul>
+      </div>
+
+      <div class="actions">
+        <button id="signout" class="btn" type="button">Sign out</button>
+      </div>
+    </section>
+
+    <!-- 4. Reschedule -->
+    <section id="screen-reschedule" aria-labelledby="h-reschedule" hidden>
+      <div class="card">
+        <h2 id="h-reschedule" tabindex="-1">Choose a new time</h2>
+        <p id="reschedule-intro" class="muted"></p>
+        <p id="reschedule-error" class="message message-error" role="alert" hidden></p>
+
+        <h3 id="h-waits">Estimated wait by provider</h3>
+        <ul id="waits-list" class="wait-list" aria-labelledby="h-waits"></ul>
+        <p id="waits-note" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <h3 id="h-slots">Available times</h3>
+        <p id="slots-summary" class="muted" role="status"></p>
+        <label class="check" for="hide-unavailable">
+          <input id="hide-unavailable" type="checkbox">
+          <span>Hide times that are not available</span>
+        </label>
+        <div id="slots-container" aria-labelledby="h-slots"></div>
+
+        <div id="review-panel" class="panel panel-info" role="group" aria-labelledby="review-title" hidden>
+          <h3 id="review-title">Review your change</h3>
+          <p id="review-text"></p>
+          <div class="actions">
+            <button id="review-change" class="btn" type="button">Choose a different time</button>
+            <button id="review-confirm" class="btn btn-primary" type="button">Confirm change</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="review-open" class="btn btn-primary" type="button" disabled>Review this change</button>
+          <button id="reschedule-back" class="btn" type="button">Back to my appointment</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>This is an educational prototype. Every name, date and appointment is made up.</p>
+  </footer>
+</body>
+</html>
