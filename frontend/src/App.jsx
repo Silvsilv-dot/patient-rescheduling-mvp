@@ -32,7 +32,7 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // 24-HOUR RESCHEDULING VALIDATION LOCK (Fixes the ERR_ASSERTION test failure)
+  // 24-HOUR RESCHEDULING VALIDATION LOCK
   const handleReschedule = (appointmentTime, appointmentId) => {
     const now = new Date();
     const appTime = new Date(appointmentTime);
@@ -44,7 +44,6 @@ export default function App() {
       return; 
     }
 
-    // Proceed with rescheduling logic
     showToast(`Rescheduling appointment ${appointmentId}...`, "success");
   };
 
@@ -115,6 +114,8 @@ export default function App() {
                         <button
                           onClick={() => handleReschedule(app.appointment_time, app.id)}
                           disabled={isWithin24Hours}
+                          data-testid="reschedule-button"
+                          data-disabled={isWithin24Hours ? "true" : "false"}
                           className={`px-4 py-2 rounded text-sm font-medium transition ${
                             isWithin24Hours 
                               ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
