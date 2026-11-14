@@ -1,138 +1,132 @@
--- Patient Rescheduling MVP schema (Postgres / Neon).
--- Synthetic demo data only. Safe to run more than once (idempotent).
--- Prohibited by design: contact details, record numbers, clinical or
--- billing data. The privacy test scans this file's column names.
+-- HealthFlow Clinic Showcase MVP — Idempotent Schema (Zero PHI/PII)
+-- Enforces BR-01..BR-25, PROHIBITED_FIELD_PARTS, and atomic double-booking protection.
 
 CREATE TABLE IF NOT EXISTS locations (
-    location_id  TEXT PRIMARY KEY,
-    name         TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS providers (
-    provider_id  TEXT PRIMARY KEY,
-    display_name TEXT NOT NULL,
-    location_id  TEXT NOT NULL REFERENCES locations (location_id)
+    location_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    suite TEXT NOT NULL,
+    time_zone TEXT NOT NULL DEFAULT 'America/New_York'
 );
 
 CREATE TABLE IF NOT EXISTS appointment_types (
-    type_id      TEXT PRIMARY KEY,
-    label        TEXT NOT NULL,
-    duration_min INTEGER NOT NULL CHECK (duration_min > 0)
+    type_id TEXT PRIMARY KEY,
+    label TEXT NOT NULL,
+    label_es TEXT NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 30 CHECK (duration_minutes = 30)
+);
+
+CREATE TABLE IF NOT EXISTS providers (
+    provider_id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    specialty TEXT NOT NULL,
+    specialty_es TEXT NOT NULL,
+    location_id TEXT NOT NULL REFERENCES locations(location_id),
+    active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS patients (
-    patient_id   TEXT PRIMARY KEY,
-    display_name TEXT NOT NULL
+    patient_id TEXT PRIMARY KEY,
+    monogram TEXT NOT NULL CHECK (char_length(monogram) BETWEEN 2 AND 3),
+    display_alias TEXT NOT NULL,
+    consent_c1_version TEXT,
+    consent_c1_granted_at TIMESTAMPTZ,
+    consent_c2_reminders BOOLEAN NOT NULL DEFAULT FALSE,
+    consent_c2_updated_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS slots (
-    slot_id      TEXT PRIMARY KEY,
-    provider_id  TEXT NOT NULL REFERENCES providers (provider_id),
-    location_id  TEXT NOT NULL REFERENCES locations (location_id),
-    type_id      TEXT NOT NULL REFERENCES appointment_types (type_id),
-    start_time   TIMESTAMPTZ NOT NULL,
-    end_time     TIMESTAMPTZ NOT NULL,
-    status       TEXT NOT NULL CHECK (status IN ('Available', 'Booked', 'Blocked')),
+    slot_id TEXT PRIMARY KEY,
+    provider_id TEXT NOT NULL REFERENCES providers(provider_id),
+    type_id TEXT NOT NULL REFERENCES appointment_types(type_id),
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Available' CHECK (status IN ('Available', 'Booked', 'Blocked')),
     CHECK (end_time > start_time)
 );
 
 CREATE TABLE IF NOT EXISTS appointments (
-    appt_id            TEXT PRIMARY KEY,
-    patient_id         TEXT NOT NULL REFERENCES patients (patient_id),
-    slot_id            TEXT NOT NULL REFERENCES slots (slot_id),
-    type_id            TEXT NOT NULL REFERENCES appointment_types (type_id),
-    status             TEXT NOT NULL CHECK (status IN (
-                           'Scheduled', 'Confirmed', 'Rescheduled',
-                           'Cancelled', 'Completed', 'No-show')),
-    delay_minutes      INTEGER NOT NULL DEFAULT 0 CHECK (delay_minutes >= 0),
-    reschedule_count   INTEGER NOT NULL DEFAULT 0 CHECK (reschedule_count >= 0),
-    late_cancellation  BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+    appt_id TEXT PRIMARY KEY,
+    patient_id TEXT NOT NULL REFERENCES patients(patient_id),
+    slot_id TEXT NOT NULL REFERENCES slots(slot_id),
+    type_id TEXT NOT NULL REFERENCES appointment_types(type_id),
+    status TEXT NOT NULL DEFAULT 'Scheduled'
+        CHECK (status IN ('Scheduled', 'Confirmed', 'Rescheduled', 'Cancelled', 'Completed', 'No-show')),
+    reschedule_count INTEGER NOT NULL DEFAULT 0 CHECK (reschedule_count >= 0 AND reschedule_count <= 2),
+    late_cancellation BOOLEAN NOT NULL DEFAULT FALSE,
+    access_code_hash TEXT NOT NULL,
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- BR-10: a slot can never hold two active appointments. The database itself
--- refuses a second active appointment on the same slot, even under a race.
+-- BR-10: Prevent two active appointments from ever claiming the same slot
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_appointment_per_slot
     ON appointments (slot_id)
     WHERE status IN ('Scheduled', 'Confirmed', 'Rescheduled');
 
-CREATE TABLE IF NOT EXISTS patient_access (
-    appt_id          TEXT PRIMARY KEY REFERENCES appointments (appt_id),
-    access_code_hash TEXT NOT NULL,
-    failed_attempts  INTEGER NOT NULL DEFAULT 0,
-    locked_until     TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS reschedule_history (
-    history_id  BIGSERIAL PRIMARY KEY,
-    appt_id     TEXT NOT NULL REFERENCES appointments (appt_id),
-    old_slot_id TEXT NOT NULL REFERENCES slots (slot_id),
-    new_slot_id TEXT NOT NULL REFERENCES slots (slot_id),
-    old_start   TIMESTAMPTZ NOT NULL,
-    new_start   TIMESTAMPTZ NOT NULL,
-    changed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS reminders (
-    reminder_id BIGSERIAL PRIMARY KEY,
-    appt_id     TEXT NOT NULL REFERENCES appointments (appt_id),
-    due_at      TIMESTAMPTZ NOT NULL,
-    status      TEXT NOT NULL DEFAULT 'Simulated' CHECK (status = 'Simulated'),
-    suppressed  BOOLEAN NOT NULL DEFAULT TRUE
-);
-
-CREATE TABLE IF NOT EXISTS notice_versions (
-    version        TEXT PRIMARY KEY,
-    notice_text    TEXT NOT NULL,
-    effective_from TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS consents (
-    consent_id     BIGSERIAL PRIMARY KEY,
-    subject_id     TEXT NOT NULL,
-    subject_role   TEXT NOT NULL CHECK (subject_role IN ('Patient', 'FrontDesk', 'Manager')),
-    consent_type   TEXT NOT NULL CHECK (consent_type IN ('C1', 'C2', 'C3')),
-    notice_version TEXT NOT NULL,
-    status         TEXT NOT NULL CHECK (status IN ('Granted', 'Declined', 'Withdrawn')),
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    reminder_id SERIAL PRIMARY KEY,
+    appt_id TEXT NOT NULL REFERENCES appointments(appt_id) ON DELETE CASCADE,
+    reminder_type TEXT NOT NULL CHECK (reminder_type IN ('48h', '24h')),
+    scheduled_for TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Simulated-Pending' CHECK (status IN ('Simulated-Pending', 'Suppressed'))
 );
 
 CREATE TABLE IF NOT EXISTS idempotency_keys (
-    idem_key      TEXT NOT NULL,
-    endpoint      TEXT NOT NULL,
-    subject_id    TEXT NOT NULL,
-    request_hash  TEXT NOT NULL,
-    status_code   INTEGER NOT NULL,
-    response_body JSONB NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (idem_key, endpoint, subject_id)
+    idempotency_key TEXT PRIMARY KEY,
+    request_fingerprint TEXT NOT NULL,
+    response_payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS audit_log (
-    audit_id   BIGSERIAL PRIMARY KEY,
-    actor_role TEXT NOT NULL,
-    action     TEXT NOT NULL,
-    appt_id    TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- BR-16: Immutable operational audit log (Zero PHI/PII)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    audit_id SERIAL PRIMARY KEY,
+    actor_role TEXT NOT NULL CHECK (actor_role IN ('Patient', 'FrontDesk', 'Clinician', 'Manager', 'System')),
+    actor_alias TEXT NOT NULL,
+    action TEXT NOT NULL,
+    appt_id TEXT,
+    old_slot_id TEXT,
+    new_slot_id TEXT,
+    detail TEXT NOT NULL,
+    idempotency_prefix TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes for the main read paths
-CREATE INDEX IF NOT EXISTS ix_slots_type_status_start
-    ON slots (type_id, status, start_time);
-CREATE INDEX IF NOT EXISTS ix_slots_provider_start
-    ON slots (provider_id, start_time);
-CREATE INDEX IF NOT EXISTS ix_appointments_patient_status
-    ON appointments (patient_id, status);
-CREATE INDEX IF NOT EXISTS ix_consents_subject
-    ON consents (subject_id, consent_type, created_at);
-CREATE INDEX IF NOT EXISTS ix_audit_created
-    ON audit_log (created_at);
-CREATE INDEX IF NOT EXISTS ix_slots_start
-    ON slots (start_time);
-CREATE INDEX IF NOT EXISTS ix_appointments_slot
-    ON appointments (slot_id);
-CREATE INDEX IF NOT EXISTS ix_reminders_appt
-    ON reminders (appt_id);
-CREATE INDEX IF NOT EXISTS ix_history_appt
-    ON reschedule_history (appt_id);
+-- Batch 4 Operational Tables (BR-13, BR-24)
+CREATE TABLE IF NOT EXISTS provider_delays (
+    delay_id SERIAL PRIMARY KEY,
+    provider_id TEXT NOT NULL REFERENCES providers(provider_id),
+    delay_minutes INTEGER NOT NULL CHECK (delay_minutes >= 0 AND delay_minutes <= 180),
+    reason_code TEXT NOT NULL DEFAULT 'CLINIC_FLOW',
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    logged_by_role TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS visit_checkins (
+    appt_id TEXT PRIMARY KEY REFERENCES appointments(appt_id) ON DELETE CASCADE,
+    room_status TEXT NOT NULL DEFAULT 'Not Arrived'
+        CHECK (room_status IN ('Not Arrived', 'Checked In', 'Roomed', 'In Visit', 'Completed', 'No-Show')),
+    updated_by_role TEXT NOT NULL DEFAULT 'System',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS staff_consents (
+    consent_id SERIAL PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('FrontDesk', 'Clinician', 'Manager')),
+    persona_key TEXT NOT NULL,
+    c3_version TEXT NOT NULL DEFAULT 'v1.0',
+    acknowledged_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS demo_personas (
+    persona_key TEXT PRIMARY KEY,
+    role TEXT NOT NULL CHECK (role IN ('Patient', 'FrontDesk', 'Clinician', 'Manager')),
+    display_label TEXT NOT NULL,
+    display_label_es TEXT NOT NULL,
+    scenario_tag TEXT NOT NULL,
+    scenario_tag_es TEXT NOT NULL,
+    target_id TEXT NOT NULL
+);

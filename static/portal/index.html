@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HealthFlow Clinic · Adaptive Care Scheduling & Operations</title>
+  <link rel="stylesheet" href="/static/portal/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main-content" data-i18n="skip_to_main">Skip to main content</a>
+
+  <!-- Top Compliance & Emergency Safety Bar (BR-17) -->
+  <div class="emergency-banner" role="region" aria-label="Emergency and Demo Notice">
+    <div class="container emergency-inner">
+      <div class="emergency-alert">
+        <span class="badge-911" aria-hidden="true">911</span>
+        <strong data-i18n="emergency_text">
+          Not for medical emergencies. If you have urgent or life-threatening symptoms, call 911 or go to the nearest emergency room immediately.
+        </strong>
+      </div>
+      <div class="demo-pill" data-i18n="demo_pill">DEMO · Synthetic Data Only (Zero PHI/PII)</div>
+    </div>
+  </div>
+
+  <!-- Primary Navigation Shell -->
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand-group">
+        <div class="brand-mark" aria-hidden="true">+</div>
+        <div>
+          <span class="brand-title">HealthFlow Clinic</span>
+          <span class="brand-sub" data-i18n="brand_sub">Care Coordination & Scheduling</span>
+        </div>
+      </div>
+
+      <!-- One-Click Multi-Persona Demo Switcher -->
+      <div class="switcher-box">
+        <label for="persona-select" class="sr-only" data-i18n="persona_label">Demo Persona</label>
+        <select id="persona-select" class="control-select persona-select" aria-label="One-Click Demo Persona Switcher"></select>
+      </div>
+
+      <!-- Adaptive Controls: Timezone (EST Base + User Region), EN/ES Language, Dark/Light Theme -->
+      <div class="utility-controls">
+        <div class="tz-box">
+          <label for="tz-select" class="sr-only" data-i18n="tz_label">Time Zone</label>
+          <select id="tz-select" class="control-select" aria-label="Time Zone Selector">
+            <option value="LOCAL" data-i18n="tz_local">My Local Time</option>
+            <option value="America/New_York" data-i18n="tz_est">Clinic Base (EST/EDT)</option>
+          </select>
+        </div>
+
+        <button id="lang-toggle" type="button" class="icon-btn" aria-label="Switch Language English / Español">
+          EN | ES
+        </button>
+
+        <button id="theme-toggle" type="button" class="icon-btn" aria-pressed="false" aria-label="Toggle Dark or Light Mode">
+          <span id="theme-icon" aria-hidden="true">◐</span>
+          <span id="theme-label" data-i18n="theme_dark">Dark</span>
+        </button>
+
+        <button id="privacy-open-btn" type="button" class="icon-btn" data-i18n="privacy_btn">
+          Privacy & Consent
+        </button>
+      </div>
+    </div>
+
+    <!-- 4-Role Navigation Tabs (Starts on Patient Rescheduling View) -->
+    <nav class="role-nav" aria-label="Workspace Role Views">
+      <div class="container role-tabs" role="tablist">
+        <button role="tab" class="role-tab active" data-role="Patient" aria-selected="true">
+          <span class="tab-dot" aria-hidden="true">●</span>
+          <span data-i18n="tab_patient">1. Patient Rescheduling</span>
+        </button>
+        <button role="tab" class="role-tab" data-role="FrontDesk" aria-selected="false">
+          <span class="tab-dot" aria-hidden="true">■</span>
+          <span data-i18n="tab_staff">2. Front-Desk Triage</span>
+        </button>
+        <button role="tab" class="role-tab" data-role="Clinician" aria-selected="false">
+          <span class="tab-dot" aria-hidden="true">▲</span>
+          <span data-i18n="tab_clinician">3. Clinician Day View</span>
+        </button>
+        <button role="tab" class="role-tab" data-role="Manager" aria-selected="false">
+          <span class="tab-dot" aria-hidden="true">◆</span>
+          <span data-i18n="tab_manager">4. Manager Analytics (6-Mo)</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Live Screen Reader & Toast Status Region -->
+  <div class="container">
+    <div id="status-banner" class="status-banner hidden" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- Main Workspace -->
+  <main id="main-content" class="container main-workspace" tabindex="-1">
+    <div id="view-container">
+      <div class="loading-card">Loading clinical workspace...</div>
+    </div>
+  </main>
+
+  <!-- Slide-Over Reschedule Drawer -->
+  <div id="drawer-backdrop" class="drawer-backdrop hidden" aria-hidden="true"></div>
+  <aside id="reschedule-drawer" class="drawer hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+    <div class="drawer-header">
+      <div>
+        <h2 id="drawer-title" data-i18n="drawer_title">Choose a New Appointment Time</h2>
+        <p id="drawer-subtitle" class="muted-text"></p>
+      </div>
+      <button id="drawer-close" type="button" class="icon-btn" aria-label="Close drawer">✕</button>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+  </aside>
+
+  <!-- Plain-English Confirmation Modal (Cancel / Reschedule / Consent C1 & C3) -->
+  <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
+  <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h2 id="modal-title">Confirm Action</h2>
+      <button id="modal-close" type="button" class="icon-btn" aria-label="Close dialog">✕</button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+    <div id="modal-footer" class="modal-footer"></div>
+  </div>
+
+  <footer class="app-footer">
+    <div class="container footer-inner">
+      <span data-i18n="footer_compliance">
+        HIPAA Minimum-Necessary & WCAG 2.2 AA Compliant Prototype · Base Clinic Time: EST/EDT (America/New_York)
+      </span>
+      <span id="live-clock-readout" class="clock-readout"></span>
+    </div>
+  </footer>
+
+  <script type="module" src="/static/portal/app.js"></script>
+</body>
+</html>
